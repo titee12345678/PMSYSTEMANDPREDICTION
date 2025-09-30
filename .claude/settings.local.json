@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install)",
+      "Bash(curl:*)",
+      "Bash(npm start:*)",
+      "Bash(cat:*)",
+      "Bash(npm install:*)",
+      "Bash(chmod:*)",
+      "Bash(npx electron:*)",
+      "Bash(./node_modules/.bin/electron:*)",
+      "Bash(pkill:*)",
+      "Bash(npm rebuild:*)",
+      "Bash(npx:*)",
+      "Bash(node:*)",
+      "Bash(npm:*)",
+      "Bash(rm:*)",
+      "Bash(node_modules/electron/dist/Electron.app/Contents/MacOS/Electron:*)",
+      "Bash(ELECTRON_SKIP_BINARY_DOWNLOAD=0 npm install electron@latest --save-dev --verbose)",
+      "Read(//private/tmp/**)",
+      "Read(//tmp/color-formula-desktop-app/**)",
+      "Bash(lsof:*)",
+      "Bash(xargs kill:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

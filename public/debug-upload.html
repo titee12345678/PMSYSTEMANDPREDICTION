@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug - Upload Test</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 1200px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .test-section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .result {
+      margin-top: 15px;
+      padding: 15px;
+      border-radius: 5px;
+      background: #f8f9fa;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .success { border-left: 4px solid #28a745; }
+    .error { border-left: 4px solid #dc3545; }
+    .info { border-left: 4px solid #17a2b8; }
+    h1 { color: #333; }
+    h3 { color: #555; margin-top: 0; }
+  </style>
+</head>
+<body>
+  <h1>🔧 Debug Upload Test</h1>
+  <p>ทดสอบ API และการอัพโหลดไฟล์ - ใช้เพื่อแก้ไขปัญหา "Server ตอบกลับในรูปแบบที่ไม่ถูกต้อง"</p>
+
+  <!-- Test 1: Health Check -->
+  <div class="test-section">
+    <h3>Test 1: Health Check</h3>
+    <button onclick="testHealth()">Test /api/health</button>
+    <div id="health-result"></div>
+  </div>
+
+  <!-- Test 2: Upload Empty Data -->
+  <div class="test-section">
+    <h3>Test 2: Upload Empty Data</h3>
+    <button onclick="testEmptyUpload()">Test /api/upload-data (Empty)</button>
+    <div id="empty-result"></div>
+  </div>
+
+  <!-- Test 3: Upload Sample Data -->
+  <div class="test-section">
+    <h3>Test 3: Upload Sample Data</h3>
+    <button onclick="testSampleUpload()">Test /api/upload-data (Sample Data)</button>
+    <div id="sample-result"></div>
+  </div>
+
+  <!-- Test 4: Upload Excel File -->
+  <div class="test-section">
+    <h3>Test 4: Upload Excel File</h3>
+    <input type="file" id="excelFile" accept=".xlsx,.xls">
+    <button onclick="testExcelUpload()">Upload and Test</button>
+    <div id="excel-result"></div>
+  </div>
+
+  <!-- Test 5: Check Browser Cache -->
+  <div class="test-section">
+    <h3>Test 5: Cache Info</h3>
+    <button onclick="checkCache()">Check Cache Status</button>
+    <div id="cache-result"></div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+  <script>
+    const API_BASE = 'http://localhost:3000';
+
+    function showResult(elementId, data, isError = false) {
+      const element = document.getElementById(elementId);
+      const className = isError ? 'error' : 'success';
+      element.innerHTML = `<div class="result ${className}">${data}</div>`;
+    }
+
+    function showInfo(elementId, data) {
+      const element = document.getElementById(elementId);
+      element.innerHTML = `<div class="result info">${data}</div>`;
+    }
+
+    async function testHealth() {
+      try {
+        showInfo('health-result', '⏳ กำลังทดสอบ...');
+
+        const response = await fetch(`${API_BASE}/api/health`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const contentType = response.headers.get('content-type');
+        const text = await response.text();
+
+        let result = `Status: ${response.status}\n`;
+        result += `Content-Type: ${contentType}\n\n`;
+        result += `Response:\n${text}`;
+
+        if (contentType && contentType.includes('application/json')) {
+          const json = JSON.parse(text);
+          result += `\n\nParsed JSON:\n${JSON.stringify(json, null, 2)}`;
+          showResult('health-result', result);
+        } else {
+          showResult('health-result', `❌ ERROR: Server returned non-JSON!\n\n${result}`, true);
+        }
+      } catch (error) {
+        showResult('health-result', `❌ ERROR:\n${error.message}\n\nStack:\n${error.stack}`, true);
+      }
+    }
+
+    async function testEmptyUpload() {
+      try {
+        showInfo('empty-result', '⏳ กำลังทดสอบ...');
+
+        const payload = {
+          records: [],
+          fileName: 'test.xlsx'
+        };
+
+        const response = await fetch(`${API_BASE}/api/upload-data`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const contentType = response.headers.get('content-type');
+        const text = await response.text();
+
+        let result = `Status: ${response.status}\n`;
+        result += `Content-Type: ${contentType}\n\n`;
+        result += `Payload sent:\n${JSON.stringify(payload, null, 2)}\n\n`;
+        result += `Response:\n${text}`;
+
+        if (contentType && contentType.includes('application/json')) {
+          const json = JSON.parse(text);
+          result += `\n\nParsed JSON:\n${JSON.stringify(json, null, 2)}`;
+          showResult('empty-result', result);
+        } else {
+          showResult('empty-result', `❌ ERROR: Server returned non-JSON!\n\n${result}`, true);
+        }
+      } catch (error) {
+        showResult('empty-result', `❌ ERROR:\n${error.message}\n\nStack:\n${error.stack}`, true);
+      }
+    }
+
+    async function testSampleUpload() {
+      try {
+        showInfo('sample-result', '⏳ กำลังทดสอบ...');
+
+        const payload = {
+          records: [
+            {
+              Machine: 'M001',
+              Date_failure: '1/1/2024',
+              Time_failure: '10:30',
+              Work_order_type: 'PM',
+              Symptom: 'ตรวจเช็คประจำ',
+              Part: 'ฟิลเตอร์',
+              Part_usage: '1',
+              Corrective_Action: 'เปลี่ยนฟิลเตอร์',
+              Duration: '1.5',
+              Status: 'Complete'
+            }
+          ],
+          fileName: 'sample.xlsx'
+        };
+
+        const response = await fetch(`${API_BASE}/api/upload-data`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const contentType = response.headers.get('content-type');
+        const text = await response.text();
+
+        let result = `Status: ${response.status}\n`;
+        result += `Content-Type: ${contentType}\n\n`;
+        result += `Payload sent:\n${JSON.stringify(payload, null, 2)}\n\n`;
+        result += `Response:\n${text.substring(0, 500)}`;
+
+        if (contentType && contentType.includes('application/json')) {
+          const json = JSON.parse(text);
+          result += `\n\nParsed JSON:\n${JSON.stringify(json, null, 2)}`;
+          showResult('sample-result', result);
+        } else {
+          showResult('sample-result', `❌ ERROR: Server returned non-JSON!\n\n${result}`, true);
+        }
+      } catch (error) {
+        showResult('sample-result', `❌ ERROR:\n${error.message}\n\nStack:\n${error.stack}`, true);
+      }
+    }
+
+    async function testExcelUpload() {
+      try {
+        const fileInput = document.getElementById('excelFile');
+        if (!fileInput.files || !fileInput.files[0]) {
+          showResult('excel-result', '❌ กรุณาเลือกไฟล์ Excel', true);
+          return;
+        }
+
+        showInfo('excel-result', '⏳ กำลังอ่านและส่งไฟล์...');
+
+        const file = fileInput.files[0];
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(arrayBuffer);
+
+        const worksheet = workbook.worksheets[0];
+        const records = [];
+        let headers = {};
+
+        // Read headers
+        const headerRow = worksheet.getRow(1);
+        headerRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+          headers[colNumber] = cell.value ? cell.value.toString().trim() : '';
+        });
+
+        // Read data
+        worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+          if (rowNumber === 1) return;
+
+          const record = {};
+          row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+            const header = headers[colNumber];
+            if (header) {
+              record[header] = cell.value;
+            }
+          });
+
+          if (Object.keys(record).length > 0) {
+            records.push(record);
+          }
+        });
+
+        let result = `📊 ไฟล์: ${file.name}\n`;
+        result += `📝 Headers: ${JSON.stringify(Object.values(headers))}\n`;
+        result += `📋 Records: ${records.length} rows\n\n`;
+
+        if (records.length > 0) {
+          result += `Sample record:\n${JSON.stringify(records[0], null, 2)}\n\n`;
+        }
+
+        // Send to API
+        const payload = {
+          records: records,
+          fileName: file.name
+        };
+
+        const response = await fetch(`${API_BASE}/api/upload-data`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const contentType = response.headers.get('content-type');
+        const text = await response.text();
+
+        result += `\n🌐 API Response:\n`;
+        result += `Status: ${response.status}\n`;
+        result += `Content-Type: ${contentType}\n\n`;
+        result += `Response:\n${text.substring(0, 1000)}`;
+
+        if (contentType && contentType.includes('application/json')) {
+          const json = JSON.parse(text);
+          result += `\n\nParsed JSON:\n${JSON.stringify(json, null, 2)}`;
+          showResult('excel-result', result);
+        } else {
+          showResult('excel-result', `❌ ERROR: Server returned non-JSON!\n\n${result}`, true);
+        }
+      } catch (error) {
+        showResult('excel-result', `❌ ERROR:\n${error.message}\n\nStack:\n${error.stack}`, true);
+      }
+    }
+
+    function checkCache() {
+      let result = '🔍 Browser Cache Information:\n\n';
+      result += `User Agent: ${navigator.userAgent}\n\n`;
+      result += `Current URL: ${window.location.href}\n`;
+      result += `API Base: ${API_BASE}\n\n`;
+
+      // Check if service workers are registered
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+          if (registrations.length > 0) {
+            result += `⚠️ Service Workers: ${registrations.length} registered\n`;
+            result += 'This might cache API responses.\n\n';
+          } else {
+            result += '✅ No Service Workers registered\n\n';
+          }
+
+          result += '💡 To clear cache:\n';
+          result += '1. Hard refresh: Cmd+Shift+R (Mac) or Ctrl+Shift+R (Windows)\n';
+          result += '2. Open DevTools > Network tab > Disable cache\n';
+          result += '3. Use Incognito/Private mode\n';
+
+          showInfo('cache-result', result);
+        });
+      } else {
+        result += '✅ Service Workers not supported\n\n';
+        result += '💡 To clear cache:\n';
+        result += '1. Hard refresh: Cmd+Shift+R (Mac) or Ctrl+Shift+R (Windows)\n';
+        result += '2. Open DevTools > Network tab > Disable cache\n';
+        result += '3. Use Incognito/Private mode\n';
+
+        showInfo('cache-result', result);
+      }
+    }
+  </script>
+</body>
+</html>

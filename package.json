@@ -1,0 +1,60 @@
+{
+  "name": "preventive-maintenance-system",
+  "version": "1.0.0",
+  "description": "Preventive Maintenance Management System with ML Prediction",
+  "main": "src/electron/main-working.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "nodemon --exec electron .",
+    "test:server": "node test-server.js",
+    "postinstall": "electron-builder install-app-deps",
+    "rebuild": "npm rebuild better-sqlite3 && npx electron-rebuild",
+    "build": "electron-builder",
+    "build:mac": "electron-builder --mac --arm64",
+    "build:win": "electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "com.pmm.maintenance",
+    "productName": "PM Maintenance System",
+    "directories": {
+      "output": "dist"
+    },
+    "mac": {
+      "target": {
+        "target": "dmg",
+        "arch": [
+          "arm64"
+        ]
+      },
+      "category": "public.app-category.productivity"
+    },
+    "win": {
+      "target": {
+        "target": "nsis",
+        "arch": [
+          "x64"
+        ]
+      }
+    }
+  },
+  "keywords": [
+    "maintenance",
+    "prediction",
+    "electron"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^11.1.2",
+    "exceljs": "^4.4.0",
+    "express": "^4.18.2",
+    "ml-matrix": "^6.11.0",
+    "natural": "^6.10.0"
+  },
+  "devDependencies": {
+    "electron": "^31.2.1",
+    "electron-builder": "^24.13.3",
+    "nodemon": "^3.0.2",
+    "rimraf": "^3.0.2"
+  }
+}

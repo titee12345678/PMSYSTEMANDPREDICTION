@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <title>Test Upload</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .result { margin-top: 20px; padding: 10px; background: #f0f0f0; white-space: pre-wrap; }
+    .error { background: #ffcccc; }
+    .success { background: #ccffcc; }
+  </style>
+</head>
+<body>
+  <h1>Test Upload API</h1>
+
+  <div>
+    <h3>1. Test Health Check</h3>
+    <button onclick="testHealth()">Test /api/health</button>
+    <div id="health-result" class="result"></div>
+  </div>
+
+  <div>
+    <h3>2. Test Upload Endpoint</h3>
+    <button onclick="testUpload()">Test /api/upload-data</button>
+    <div id="upload-result" class="result"></div>
+  </div>
+
+  <div>
+    <h3>3. Upload Excel File</h3>
+    <input type="file" id="file-input" accept=".xlsx,.xls">
+    <button onclick="uploadFile()">Upload</button>
+    <div id="file-result" class="result"></div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+  <script>
+    async function testHealth() {
+      const result = document.getElementById('health-result');
+      try {
+        const response = await fetch('/api/health');
+        const contentType = response.headers.get('content-type');
+        result.className = 'result';
+        result.textContent = `Status: ${response.status}\nContent-Type: ${contentType}\n\n`;
+
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          result.textContent += JSON.stringify(data, null, 2);
+          result.className = 'result success';
+        } else {
+          const text = await response.text();
+          result.textContent += text.substring(0, 500);
+          result.className = 'result error';
+        }
+      } catch (error) {
+        result.textContent = `Error: ${error.message}\n${error.stack}`;
+        result.className = 'result error';
+      }
+    }
+
+    async function testUpload() {
+      const result = document.getElementById('upload-result');
+      try {
+        const testData = {
+          records: [
+            {
+              "Machine": "H03",
+              "Machine_side": "5",
+              "Symptoms of failure": "ทดสอบ",
+              "Date_failure": "28/06/12",
+              "Time_failure": "08:00",
+              "repairer": "ทดสอบ",
+              "How to fix": "ทดสอบ"
+            }
+          ],
+          fileName: "test.xlsx"
+        };
+
+        result.textContent = 'Sending request...\n\n';
+
+        const response = await fetch('/api/upload-data', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(testData)
+        });
+
+        const contentType = response.headers.get('content-type');
+        result.textContent += `Status: ${response.status}\nContent-Type: ${contentType}\n\n`;
+
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          result.textContent += JSON.stringify(data, null, 2);
+          result.className = 'result success';
+        } else {
+          const text = await response.text();
+          result.textContent += text.substring(0, 500);
+          result.className = 'result error';
+        }
+      } catch (error) {
+        result.textContent = `Error: ${error.message}\n${error.stack}`;
+        result.className = 'result error';
+      }
+    }
+
+    async function uploadFile() {
+      const fileInput = document.getElementById('file-input');
+      const result = document.getElementById('file-result');
+
+      if (!fileInput.files.length) {
+        result.textContent = 'Please select a file';
+        result.className = 'result error';
+        return;
+      }
+
+      try {
+        const file = fileInput.files[0];
+        result.textContent = `Reading file: ${file.name}\n`;
+
+        // Read Excel
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(arrayBuffer);
+
+        const worksheet = workbook.worksheets[0];
+        const records = [];
+
+        // Get headers
+        const headers = {};
+        const headerRow = worksheet.getRow(1);
+        headerRow.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+          headers[colNumber] = cell.value;
+        });
+
+        result.textContent += `Headers: ${JSON.stringify(headers)}\n\n`;
+
+        // Parse rows
+        worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+          if (rowNumber === 1) return;
+
+          const record = {};
+          row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+            const header = headers[colNumber];
+            if (header) {
+              record[header] = cell.value;
+            }
+          });
+
+          records.push(record);
+        });
+
+        result.textContent += `Parsed ${records.length} records\n\n`;
+        result.textContent += `First record: ${JSON.stringify(records[0], null, 2)}\n\n`;
+
+        // Send to server
+        result.textContent += 'Sending to server...\n';
+
+        const response = await fetch('/api/upload-data', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            records: records,
+            fileName: file.name
+          })
+        });
+
+        const contentType = response.headers.get('content-type');
+        result.textContent += `Status: ${response.status}\nContent-Type: ${contentType}\n\n`;
+
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json();
+          result.textContent += JSON.stringify(data, null, 2);
+          result.className = 'result success';
+        } else {
+          const text = await response.text();
+          result.textContent += `Non-JSON response:\n${text.substring(0, 500)}`;
+          result.className = 'result error';
+        }
+
+      } catch (error) {
+        result.textContent += `\n\nError: ${error.message}\n${error.stack}`;
+        result.className = 'result error';
+      }
+    }
+  </script>
+</body>
+</html>
